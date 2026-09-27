@@ -1,19 +1,28 @@
 <!--
   Branded "download the app" page for the invite email's "Télécharger
-  Gestibulle" button. Hosted on GitHub Pages (a separate repo from this one,
-  see supabase/README.md) rather than on Supabase: Supabase silently
-  downgrades any text/html response — from an Edge Function OR a Storage
-  file — to text/plain with a sandboxed CSP (anti-phishing measure for
-  *.supabase.co), so nothing served from *.supabase.co can render as a page.
+  Gestibulle" button. Hosted on GitHub Pages (this repo) rather than on
+  Supabase: Supabase silently downgrades any text/html response — from an
+  Edge Function OR a Storage file — to text/plain with a sandboxed CSP
+  (anti-phishing measure for *.supabase.co), so nothing served from
+  *.supabase.co can render as a page.
 
-  The download link itself has to stay current (points at whatever the
-  latest EAS build is), so this static page fetches it client-side from the
-  `download` Supabase Edge Function (JSON, unaffected by the restriction
-  above) and fills in the button's href. The href already has a working
-  fallback URL in the markup for the no-JS/fetch-fails case.
+  The .apk (gestibulle.apk, next to this file) is committed straight into
+  this repo rather than linked from EAS's own build storage: EAS artifacts
+  expire 14 days after the build (confirmed the hard way — a build's
+  applicationArchiveUrl 404s past its `expirationDate` even though the
+  build's `status` stays FINISHED forever), so a page that always pointed at
+  "the latest EAS build" would quietly go dead every two weeks. Hosting the
+  file here means it stays downloadable indefinitely, at the cost of a
+  manual step after each new build (see below).
 
-  To update the page: edit this file, commit, and push — GitHub Pages
-  redeploys automatically.
+  After a new `eas build --profile preview --platform android` finishes:
+    1. Download its .apk (from the build's page on expo.dev, or via
+       supabase/functions/download?debug=1 in the main repo for the direct
+       artifact URL while it's still fresh).
+    2. Replace gestibulle.apk here with it.
+    3. Update BUILD_DATE below to the build's date.
+    4. git add -A && git commit && git push — GitHub Pages redeploys
+       automatically.
 -->
 <!DOCTYPE html>
 <html lang="fr">
@@ -65,11 +74,9 @@
     background: #cf7669;
     text-decoration: none;
     border-radius: 999px;
-    transition: background-color 0.15s ease, opacity 0.15s ease;
+    transition: background-color 0.15s ease;
   }
   .btn:hover, .btn:active { background: #b35d51; }
-  .btn.is-loading { opacity: 0.6; pointer-events: none; }
-  .btn.is-disabled { background: #d8cac0; color: #786a60; pointer-events: none; }
   .note { margin: 20px 0 0; font-size: 12.5px; line-height: 1.6; color: #8a8f9c; }
   .updated { margin: 18px 0 0; font-size: 11.5px; color: #b8a89b; }
 </style>
@@ -80,41 +87,11 @@
     <div class="content">
       <h1>Télécharger Gestibulle</h1>
       <p class="sub">L'app qui garde le rythme d'une vie de famille bien remplie — calendrier, tâches, repas et rappels, tout au même endroit.</p>
-      <a id="download-btn" class="btn is-loading" href="#">Vérification de la dernière version…</a>
-      <p class="note" id="note-text">Gestibulle n'est pas sur le Play Store — ce bouton télécharge directement le fichier d'installation (.apk). Une fois le téléchargement terminé, ouvrez-le pour installer l'application (Android peut demander d'autoriser l'installation depuis cette source).</p>
-      <p class="updated" id="updated-label"></p>
+      <a class="btn" href="gestibulle.apk">⬇ Télécharger pour Android</a>
+      <p class="note">Gestibulle n'est pas sur le Play Store — ce bouton télécharge directement le fichier d'installation (.apk). Une fois le téléchargement terminé, ouvrez-le pour installer l'application (Android peut demander d'autoriser l'installation depuis cette source).</p>
+      <!-- BUILD_DATE -->
+      <p class="updated">Dernière mise à jour : 27 septembre 2026</p>
     </div>
   </div>
-  <script>
-    (function () {
-      var btn = document.getElementById('download-btn');
-      var label = document.getElementById('updated-label');
-      var note = document.getElementById('note-text');
-
-      function showUnavailable() {
-        btn.classList.add('is-disabled');
-        btn.removeAttribute('href');
-        btn.textContent = 'Aucune version disponible pour le moment';
-        note.textContent = "Une nouvelle version est en préparation — réessayez un peu plus tard, ou demandez à la personne qui vous a invité(e) de relancer une build.";
-      }
-
-      fetch('https://rehdsszmpuuopveqpfhb.supabase.co/functions/v1/download')
-        .then(function (r) { return r.json(); })
-        .then(function (data) {
-          if (data && data.downloadUrl && !data.expired) {
-            btn.href = data.downloadUrl;
-            btn.textContent = '⬇ Télécharger pour Android';
-            if (data.updatedAt) {
-              var d = new Date(data.updatedAt);
-              label.textContent = 'Dernière mise à jour : ' + d.toLocaleDateString('fr-CA', { year: 'numeric', month: 'long', day: 'numeric' });
-            }
-          } else {
-            showUnavailable();
-          }
-        })
-        .catch(showUnavailable)
-        .finally(function () { btn.classList.remove('is-loading'); });
-    })();
-  </script>
 </body>
 </html>
