@@ -69,6 +69,7 @@
   }
   .btn:hover, .btn:active { background: #b35d51; }
   .btn.is-loading { opacity: 0.6; pointer-events: none; }
+  .btn.is-disabled { background: #d8cac0; color: #786a60; pointer-events: none; }
   .note { margin: 20px 0 0; font-size: 12.5px; line-height: 1.6; color: #8a8f9c; }
   .updated { margin: 18px 0 0; font-size: 11.5px; color: #b8a89b; }
 </style>
@@ -79,8 +80,8 @@
     <div class="content">
       <h1>Télécharger Gestibulle</h1>
       <p class="sub">L'app qui garde le rythme d'une vie de famille bien remplie — calendrier, tâches, repas et rappels, tout au même endroit.</p>
-      <a id="download-btn" class="btn is-loading" href="https://expo.dev/accounts/labricole/projects/gestion-familiale/builds/d0c03d0c-8049-4c6f-8ff5-fd7121ea6f88">⬇ Télécharger pour Android</a>
-      <p class="note">Gestibulle n'est pas sur le Play Store — ce bouton télécharge directement le fichier d'installation (.apk). Une fois le téléchargement terminé, ouvrez-le pour installer l'application (Android peut demander d'autoriser l'installation depuis cette source).</p>
+      <a id="download-btn" class="btn is-loading" href="#">Vérification de la dernière version…</a>
+      <p class="note" id="note-text">Gestibulle n'est pas sur le Play Store — ce bouton télécharge directement le fichier d'installation (.apk). Une fois le téléchargement terminé, ouvrez-le pour installer l'application (Android peut demander d'autoriser l'installation depuis cette source).</p>
       <p class="updated" id="updated-label"></p>
     </div>
   </div>
@@ -88,16 +89,30 @@
     (function () {
       var btn = document.getElementById('download-btn');
       var label = document.getElementById('updated-label');
+      var note = document.getElementById('note-text');
+
+      function showUnavailable() {
+        btn.classList.add('is-disabled');
+        btn.removeAttribute('href');
+        btn.textContent = 'Aucune version disponible pour le moment';
+        note.textContent = "Une nouvelle version est en préparation — réessayez un peu plus tard, ou demandez à la personne qui vous a invité(e) de relancer une build.";
+      }
+
       fetch('https://rehdsszmpuuopveqpfhb.supabase.co/functions/v1/download')
         .then(function (r) { return r.json(); })
         .then(function (data) {
-          if (data && data.downloadUrl) btn.href = data.downloadUrl;
-          if (data && data.updatedAt) {
-            var d = new Date(data.updatedAt);
-            label.textContent = 'Dernière mise à jour : ' + d.toLocaleDateString('fr-CA', { year: 'numeric', month: 'long', day: 'numeric' });
+          if (data && data.downloadUrl && !data.expired) {
+            btn.href = data.downloadUrl;
+            btn.textContent = '⬇ Télécharger pour Android';
+            if (data.updatedAt) {
+              var d = new Date(data.updatedAt);
+              label.textContent = 'Dernière mise à jour : ' + d.toLocaleDateString('fr-CA', { year: 'numeric', month: 'long', day: 'numeric' });
+            }
+          } else {
+            showUnavailable();
           }
         })
-        .catch(function () { /* keep the fallback href already in the markup */ })
+        .catch(showUnavailable)
         .finally(function () { btn.classList.remove('is-loading'); });
     })();
   </script>
